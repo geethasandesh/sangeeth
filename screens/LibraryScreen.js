@@ -4,10 +4,10 @@ import { Ionicons, MaterialIcons, Entypo, FontAwesome5 } from '@expo/vector-icon
 
 const CARD_DATA = [
   { title: 'Liked Songs', icon: <Ionicons name="heart" size={28} color="#1DB954" />, screen: 'LikedSongs' },
-  { title: 'Podcasts', icon: <MaterialIcons name="podcasts" size={28} color="#ffa500" />, screen: 'PodCasts' },
+  { title: 'Downloads', icon: <MaterialIcons name="download" size={28} color="#ffa500" />, screen: 'Podcasts' },
   { title: 'Playlists', icon: <Entypo name="folder-music" size={28} color="#00bfff" />, screen: 'PlayLists' },
   { title: 'Recently Played', icon: <FontAwesome5 name="history" size={26} color="#ff69b4" />, screen: 'RecentlyPlayed' },
-  { title: 'Create New', icon: <Ionicons name="add-circle-outline" size={28} color="#ccc" />, screen: null }, // Or handle differently
+  { title: 'Create New', icon: <Ionicons name="add-circle-outline" size={28} color="#ccc" />, screen: null },
 ];
 
 const screenWidth = Dimensions.get('window').width;

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Animated,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import * as Haptics from 'expo-haptics';
@@ -16,6 +17,7 @@ import * as Notifications from 'expo-notifications';
 import { useMusicPlayer } from '../context/MusicPlayerContext';
 import { useAuth } from '../context/AuthContext';
 import { Ionicons, MaterialIcons, FontAwesome } from '@expo/vector-icons';
+import { downloadSong, checkIfDownloaded } from '../utils/downloadManager';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -46,6 +48,9 @@ export default function FloatingPlayer() {
   const [expanded, setExpanded] = useState(false);
   const [sliderValue, setSliderValue] = useState(0);
   const [isSliding, setIsSliding] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [isDownloaded, setIsDownloaded] = useState(false);
 
   useEffect(() => {
     if (error) {
@@ -85,6 +90,12 @@ export default function FloatingPlayer() {
     };
   }, [isPlaying]);
 
+  useEffect(() => {
+    if (currentSong && user) {
+      checkIfDownloaded(currentSong.id, user.uid).then(setIsDownloaded);
+    }
+  }, [currentSong, user]);
+
   if (!user || !currentSong) return null;
 
   const formattedTime = (sec) => {
@@ -114,6 +125,35 @@ export default function FloatingPlayer() {
 
   const isPrevDisabled = currentIndex <= 0 && repeatMode === 'off' && !isShuffle;
   const isNextDisabled = currentIndex >= queue.length - 1 && repeatMode === 'off' && !isShuffle;
+
+  const handleDownload = async () => {
+    if (!currentSong || !user || isDownloading || isDownloaded) return;
+
+    setIsDownloading(true);
+    try {
+      const songUrl = currentSong.audioUrl || currentSong.url;
+      if (!songUrl) {
+        throw new Error('No audio URL available for this song');
+      }
+
+      await downloadSong(
+        currentSong,
+        user.uid,
+        (progress) => setDownloadProgress(progress)
+      );
+      setIsDownloaded(true);
+      Alert.alert('Success', 'Song downloaded successfully!');
+    } catch (error) {
+      console.error('Download failed:', error);
+      Alert.alert(
+        'Download Failed',
+        error.message || 'Failed to download the song. Please try again.'
+      );
+    } finally {
+      setIsDownloading(false);
+      setDownloadProgress(0);
+    }
+  };
 
   return (
     <View style={StyleSheet.absoluteFill}>
@@ -243,6 +283,24 @@ export default function FloatingPlayer() {
                 size={24}
                 color={isLiked ? '#1DB954' : '#fff'}
               />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.controlButton, styles.downloadButton]}
+              onPress={handleDownload}
+              disabled={isDownloading || isDownloaded}
+            >
+              {isDownloading ? (
+                <View style={styles.progressContainer}>
+                  <Text style={styles.progressText}>{Math.round(downloadProgress)}%</Text>
+                </View>
+              ) : (
+                <Ionicons 
+                  name={isDownloaded ? "checkmark-circle" : "download-outline"} 
+                  size={24} 
+                  color={isDownloaded ? "#1DB954" : "#fff"} 
+                />
+              )}
             </TouchableOpacity>
           </View>
 
@@ -400,6 +458,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
+    gap: 20,
   },
   queueInfo: {
     marginTop: 20,
@@ -408,5 +467,25 @@ const styles = StyleSheet.create({
   queueText: {
     color: '#666',
     fontSize: 14,
+  },
+  downloadContainer: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  downloadButton: {
+    backgroundColor: '#333',
+    borderRadius: 20,
+    padding: 10,
+  },
+  progressContainer: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  progressText: {
+    color: '#1DB954',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });

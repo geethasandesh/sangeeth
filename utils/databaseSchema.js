@@ -59,6 +59,7 @@ export const userSchema = {
   displayName: 'string',
   email: 'string',
   photoURL: 'string',
+  role: 'string', // 'admin', 'employee', or 'user'
   
   // Music Preferences
   favoriteGenres: ['string'],
@@ -165,30 +166,60 @@ export const firebaseRules = `
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if user owns the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
     // Songs collection
     match /songs/{songId} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.token.admin == true;
+      allow write: if isAdmin();
     }
-    
+
+    // Liked Songs collection
+    match /likedSongs/{documentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // Recently Played collection
+    match /recentlyPlayed/{documentId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
     // Playlists collection
     match /playlists/{playlistId} {
       allow read: if true;
-      allow write: if request.auth != null && 
-        (resource == null || resource.data.createdBy == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && resource.data.createdBy == request.auth.uid;
     }
-    
-    // Users collection
-    match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-    
+
     // Analytics collection
     match /analytics/{recordId} {
-      allow read: if request.auth != null && request.auth.token.admin == true;
-      allow create: if request.auth != null;
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
     }
   }
-}
-`; 
+}`; 

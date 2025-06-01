@@ -7,14 +7,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 export default function App() {
   return (
-      <SafeAreaProvider>
-        <AuthProvider>
-          <MusicPlayerProvider>
-            <AppNavigator />
+    <SafeAreaProvider>
+      <AuthProvider>
+        <MusicPlayerProvider>
+          <AppNavigator />
           <FloatingPlayer />
         </MusicPlayerProvider>
       </AuthProvider>
-      </SafeAreaProvider>
-   
+    </SafeAreaProvider>
   );
 }
